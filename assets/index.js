@@ -22,78 +22,35 @@
         try {
           // ctx.scale(-1, 1);
           // ctx.translate(-VIDEO_WIDTH, 0);
+          // Load the MediaPipe facemesh model.
+          const model = await facemesh.load();
+
+          // Pass in a video stream (or an image, canvas, or 3D tensor) to obtain an
+          // array of detected faces from the MediaPipe graph.
+          const predictions = await model.estimateFaces(video);
+          console.log(`predictions ${predictions}`);
+          if (predictions.length > 0) {
+            for (let i = 0; i < predictions.length; i++) {
+              const keypoints = predictions[i].scaledMesh;
+
+              // Log facial keypoints.
+              for (let i = 0; i < keypoints.length; i++) {
+                const [x, y, z] = keypoints[i];
+
+                console.log(`Keypoint ${i}: [${x}, ${y}, ${z}]`);
+              }
+            }
+          }
           canvas.width = video.offsetWidth;
           canvas.height = video.offsetHeight;
           ctx.restore();
-          estimateMultiplePoses();
         } catch (err) {
           clearInterval(intervalID);
-          setErrorMessage(err.message);
+          console.log(err.message);
         }
       }, Math.round(1000 / frameRate));
       return () => clearInterval(intervalID);
     });
-  function drawKeypoints(keypoints) {
-    for (let i = 0; i < keypoints.length; i++) {
-      const keypoint = keypoints[i];
-      console.log(`keypoint in drawkeypoints ${keypoint}`);
-      const { y, x } = keypoint.position;
-      drawPoint(y, x, 3);
-    }
-  }
-  function drawSegment(pair1, pair2, color, scale) {
-    ctx.beginPath();
-    ctx.moveTo(pair1.x * scale, pair1.y * scale);
-    ctx.lineTo(pair2.x * scale, pair2.y * scale);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = color;
-    ctx.stroke();
-  }
-
-  function drawSkeleton(keypoints) {
-    const color = "#FFFFFF";
-    const adjacentKeyPoints = posenet.getAdjacentKeyPoints(
-      keypoints,
-      minConfidence
-    );
-
-    adjacentKeyPoints.forEach((keypoint) => {
-      drawSegment(keypoint[0].position, keypoint[1].position, color, 1);
-    });
-  }
-  function drawPoint(y, x, r) {
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, 2 * Math.PI);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fill();
-  }
-
-  const estimateMultiplePoses = () => {
-    posenet
-      .load()
-      .then(function(net) {
-        console.log("estimateMultiplePoses .... ");
-        return net.estimatePoses(video, {
-          decodingMethod: "single-person",
-        });
-      })
-      .then(function(poses) {
-        console.log(`got Poses ${JSON.stringify(poses)}`);
-        
-        canvas.width = VIDEO_WIDTH;
-        canvas.height = VIDEO_HEIGHT;
-        ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
-        ctx.save();
-        ctx.drawImage(video, 0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
-        ctx.restore();
-        poses.forEach(({ score, keypoints }) => {
-          if (score >= minConfidence) {
-            drawKeypoints(keypoints);
-            drawSkeleton(keypoints);
-          }
-        });
-      });
-  };
 
   // buttons
   const joinRoomButton = document.getElementById("button-join");
